@@ -5,7 +5,7 @@ from datetime import datetime
 
 BOT_TOKEN = "8246292350:AAFHyIRmAFYF0cnzD6xNjDlw2O8vRnw6AWs"
 MISTRAL_API_KEY = "DDyw1QG5kQhTTjhi1f9byoQTHgdCyJiC"
-MODEL = "mistral-latest"  # Основная модель
+MODEL = "devstral-latest"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -30,7 +30,7 @@ DEVSTRAL_PROMPT = {
 Используй **Заголовок** в заголовках, и используй цитировагие > в коде (весь код в одной цитате)"""
 }
 
-# Промт для Devstral Code (специализация на программировании)
+# Промт для Devstral Code
 DEVSTRAL_CODE_PROMPT = {
     "role": "system",
     "content": """Ты Devstral Code AI - специализированный помощник по программированию.
@@ -57,6 +57,7 @@ DEVSTRAL_CODE_PROMPT = {
 
 # Хранилище для выбранных моделей пользователей
 user_models = {}
+user_histories = {}  # Отдельное хранилище для историй
 
 def ask_mistral(messages):
     try:
@@ -90,49 +91,78 @@ def start(message):
 def callback_model(call):
     user_id = call.from_user.id
     
-    if call.data == "model_devstral":
-        user_models[user_id] = [DEVSTRAL_PROMPT]
-        bot.edit_message_text(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            text="✅ Ты выбрал **Devstral** - универсального помощника!\n\nЗадавай любые вопросы!",
-            parse_mode="Markdown"
-        )
+    try:
+        if call.data == "model_devstral":
+            # Сохраняем выбранную модель
+            user_models[user_id] = "devstral"
+            # Инициализируем историю с соответствующим промптом
+            user_histories[user_id] = [DEVSTRAL_PROMPT]
+            
+            # Редактируем сообщение с кнопками
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text="✅ Ты выбрал **Devstral** - универсального помощника!\n\nЗадавай любые вопросы!",
+                parse_mode="Markdown"
+            )
+            
+        elif call.data == "model_code":
+            # Сохраняем выбранную модель
+            user_models[user_id] = "code"
+            # Инициализируем историю с соответствующим промптом
+            user_histories[user_id] = [DEVSTRAL_CODE_PROMPT]
+            
+            # Редактируем сообщение с кнопками
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text="✅ Ты выбрал **Devstral Code** - специалиста по программированию!\n\nМожешь спрашивать про код, алгоритмы, отладку и всё что связано с разработкой!",
+                parse_mode="Markdown"
+            )
         
-    elif call.data == "model_code":
-        user_models[user_id] = [DEVSTRAL_CODE_PROMPT]
-        bot.edit_message_text(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id,
-            text="✅ Ты выбрал **Devstral Code** - специалиста по программированию!\n\nМожешь спрашивать про код, алгоритмы, отладку и всё что связано с разработкой!",
-            parse_mode="Markdown"
-        )
+        # Отвечаем на callback, чтобы убрать "часики" на кнопке
+        bot.answer_callback_query(call.id, "Модель выбрана!")
+        
+    except Exception as e:
+        print(f"Ошибка в callback: {e}")
+        bot.answer_callback_query(call.id, "Произошла ошибка!", show_alert=True)
 
 @bot.message_handler(commands=['change_model'])
 def change_model(message):
     """Команда для смены модели"""
-    start(message)  # Переиспользуем меню выбора
+    start(message)
+
+@bot.message_handler(commands=['model'])
+def show_model(message):
+    """Показать текущую модель"""
+    user_id = message.from_user.id
+    
+    if user_id in user_models:
+        model_name = "Devstral (обычный)" if user_models[user_id] == "devstral" else "Devstral Code"
+        bot.reply_to(message, f"🔹 Твоя текущая модель: **{model_name}**\n\nИспользуй /change_model чтобы сменить модель", parse_mode="Markdown")
+    else:
+        bot.reply_to(message, "❌ Модель не выбрана. Используй /start чтобы выбрать модель")
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     user_id = message.from_user.id
     
     # Проверяем выбрал ли пользователь модель
-    if user_id not in user_models:
+    if user_id not in user_models or user_id not in user_histories:
         bot.reply_to(message, "⚠️ Сначала выбери модель через /start")
         return
     
     # Добавляем сообщение пользователя в историю
-    user_models[user_id].append({"role": "user", "content": message.text})
+    user_histories[user_id].append({"role": "user", "content": message.text})
     
     # Отправляем уведомление что бот печатает
     bot.send_chat_action(message.chat.id, 'typing')
     
     # Получаем ответ
-    reply = ask_mistral(user_models[user_id])
+    reply = ask_mistral(user_histories[user_id])
     
     # Добавляем ответ в историю
-    user_models[user_id].append({"role": "assistant", "content": reply})
+    user_histories[user_id].append({"role": "assistant", "content": reply})
     
     # Отправляем ответ
     bot.reply_to(message, reply, parse_mode="HTML")
@@ -142,4 +172,8 @@ if __name__ == '__main__':
     print("Доступные модели:")
     print("  - Devstral (универсальный)")
     print("  - Devstral Code (программирование)")
-    bot.infinity_polling()
+    
+    try:
+        bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    except Exception as e:
+        print(f"Ошибка: {e}")
