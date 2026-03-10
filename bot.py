@@ -5,7 +5,7 @@ from datetime import datetime
 
 BOT_TOKEN = "8246292350:AAFHyIRmAFYF0cnzD6xNjDlw2O8vRnw6AWs"
 MISTRAL_API_KEY = "DDyw1QG5kQhTTjhi1f9byoQTHgdCyJiC"
-MODEL = "mistral-large-latest"  # Основная модель
+MODEL = "mistral-latest"  # Основная модель
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
