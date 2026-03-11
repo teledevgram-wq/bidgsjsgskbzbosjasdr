@@ -75,7 +75,7 @@ def ask_mistral(messages):
 def start(message):
     user_id = message.from_user.id
     chat_history[user_id] = [SYSTEM_PROMPT]
-    bot.reply_to(message, "👋 Привет! Я Devstral AI. Задавай вопросы!\n\nКоманды:\n!code - включить режим жёсткого программиста\n!default - вернуть обычный режим")
+    bot.reply_to(message, "👋 Привет! Я Devstral AI. Задавай вопросы!\n\nКоманды:\n!code - включить режим программиста\n!default - вернуть обычный режим")
 
 @bot.message_handler(commands=['code'])
 def code_mode(message):
@@ -91,7 +91,7 @@ def code_mode(message):
                 new_history.append(msg)
     
     chat_history[user_id] = new_history
-    bot.reply_to(message, "🔥 **Режим жёсткого программиста АКТИВИРОВАН!**\n\nТеперь я буду гонять тебя по код-ревью как сеньор! Показывай свой код! 👨‍💻", parse_mode="Markdown")
+    bot.reply_to(message, "🔥 **Режим программиста включен**\n\nТеперь я буду гонять тебя по код-ревью как сеньор! Показывай свой код! 👨‍💻", parse_mode="HTML")
 
 @bot.message_handler(commands=['default'])
 def default_mode(message):
@@ -107,7 +107,7 @@ def default_mode(message):
                 new_history.append(msg)
     
     chat_history[user_id] = new_history
-    bot.reply_to(message, "✅ Вернулся в обычный режим! Чем могу помочь? 😊", parse_mode="Markdown")
+    bot.reply_to(message, "✅ Вернулся в обычный режим! Чем могу помочь? 😊", parse_mode="HTML")
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
